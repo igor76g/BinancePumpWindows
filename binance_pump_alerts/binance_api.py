@@ -1,0 +1,56 @@
+"""Binance USDT-M Futures PUBLIC REST API client.
+
+No API key is needed: all endpoints used here are public market data.
+
+    GET /fapi/v1/exchangeInfo   - list of symbols
+    GET /fapi/v1/ticker/24hr    - 24h statistics (quoteVolume)
+    GET /fapi/v1/ticker/price   - latest prices
+"""
+
+from __future__ import annotations
+
+import requests
+
+BASE_URL = "https://fapi.binance.com"
+REQUEST_TIMEOUT = (10, 20)  # (connect, read) seconds
+
+
+class BinanceApi:
+    def __init__(self) -> None:
+        self._session = requests.Session()
+
+    def _get(self, path: str):
+        response = self._session.get(BASE_URL + path, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        return response.json()
+
+    def usdt_perpetual_symbols(self) -> set[str]:
+        """Currently trading USDT-margined perpetual futures symbols (e.g. BTCUSDT)."""
+        data = self._get("/fapi/v1/exchangeInfo")
+        return {
+            s["symbol"]
+            for s in data.get("symbols", [])
+            if s.get("quoteAsset") == "USDT"
+            and s.get("contractType") == "PERPETUAL"
+            and s.get("status") == "TRADING"
+        }
+
+    def quote_volumes(self) -> dict[str, float]:
+        """Map of symbol -> 24h quote volume in USDT."""
+        result: dict[str, float] = {}
+        for item in self._get("/fapi/v1/ticker/24hr"):
+            try:
+                result[item["symbol"]] = float(item["quoteVolume"])
+            except (KeyError, TypeError, ValueError):
+                continue
+        return result
+
+    def prices(self) -> dict[str, float]:
+        """Map of symbol -> last price."""
+        result: dict[str, float] = {}
+        for item in self._get("/fapi/v1/ticker/price"):
+            try:
+                result[item["symbol"]] = float(item["price"])
+            except (KeyError, TypeError, ValueError):
+                continue
+        return result
