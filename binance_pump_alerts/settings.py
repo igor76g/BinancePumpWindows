@@ -27,6 +27,7 @@ class Settings:
     check_interval_sec: int = 15            # how often to poll current prices
     cooldown_minutes: int = 15              # don't re-alert the same coin within this time
     autostart_monitoring: bool = False      # start monitoring as soon as the app opens
+    sound_enabled: bool = True              # play a sound on every alert
 
     @property
     def min_volume_usdt(self) -> float:
@@ -36,6 +37,11 @@ class Settings:
 def settings_path() -> Path:
     base = os.environ.get("APPDATA") or str(Path.home() / ".config")
     return Path(base) / "BinancePumpAlerts" / "settings.json"
+
+
+def alerts_log_path() -> Path:
+    """Text file where every alert (and notification problem) is recorded."""
+    return settings_path().parent / "alerts.log"
 
 
 def load_settings() -> Settings:

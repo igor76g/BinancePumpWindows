@@ -1,7 +1,7 @@
 ; Inno Setup script: builds BinancePumpAlerts-Setup.exe from the PyInstaller output (dist\BinancePumpAlerts)
 
 #define MyAppName "Binance Pump Alerts"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppExeName "BinancePumpAlerts.exe"
 
 [Setup]

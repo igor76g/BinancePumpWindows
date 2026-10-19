@@ -31,6 +31,16 @@ The installer is created at `installer_output\BinancePumpAlerts-Setup.exe`.
 
 Settings are stored in `%APPDATA%\BinancePumpAlerts\settings.json`.
 
+## Sound and alerts log
+
+- The app plays its own two-tone beep on every alert ("Play a sound on every alert" checkbox),
+  because Windows often mutes the sound of toast notifications. Use **Test notification** to check it.
+  If you hear nothing, check the Windows volume mixer and the selected output device.
+- Every alert is also written to `%APPDATA%\BinancePumpAlerts\alerts.log` (button **Alerts log**),
+  including the time, coin, growth and price. If a toast could not be shown, the reason is written there too.
+  Use it to compare with other alert sources: if the coin is in the log but you did not see a toast,
+  Windows hid it (check Focus assist / Do not disturb and Settings > System > Notifications).
+
 ## Settings
 
 | Setting | Default | Meaning |

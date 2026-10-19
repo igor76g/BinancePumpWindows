@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import queue
 import time
 import tkinter as tk
@@ -10,7 +11,7 @@ from tkinter import messagebox, scrolledtext, ttk
 from . import __version__, notifier
 from .binance_api import BinanceApi
 from .monitor import Monitor
-from .settings import APP_NAME, Settings, load_settings, save_settings
+from .settings import APP_NAME, Settings, alerts_log_path, load_settings, save_settings
 
 MAX_LOG_LINES = 500
 
@@ -41,6 +42,7 @@ class App(tk.Tk):
         self.labels: dict[str, str] = {}
         self.types: dict[str, tuple] = {}
         self.autostart_var = tk.BooleanVar(value=False)
+        self.sound_var = tk.BooleanVar(value=True)
 
         self._build_widgets()
         settings = load_settings()
@@ -83,6 +85,7 @@ class App(tk.Tk):
         ttk.Checkbutton(
             root, text="Start monitoring automatically when the app opens", variable=self.autostart_var
         ).pack(anchor="w", pady=(12, 0))
+        ttk.Checkbutton(root, text="Play a sound on every alert", variable=self.sound_var).pack(anchor="w")
 
         buttons = ttk.Frame(root)
         buttons.pack(fill="x", pady=12)
@@ -93,6 +96,7 @@ class App(tk.Tk):
         self.stop_button = ttk.Button(buttons, text="Stop", command=self.stop_monitoring, state="disabled")
         self.stop_button.pack(side="left")
         ttk.Button(buttons, text="Test notification", command=self.test_notification).pack(side="right")
+        ttk.Button(buttons, text="Alerts log", command=self.open_alerts_log).pack(side="right", padx=6)
 
         ttk.Label(root, text="Log", font=("Segoe UI", 10, "bold")).pack(anchor="w")
         self.log_widget = scrolledtext.ScrolledText(root, height=12, state="disabled", wrap="word")
@@ -103,6 +107,7 @@ class App(tk.Tk):
             value = getattr(s, key)
             var.set(f"{value:g}" if isinstance(value, float) else str(value))
         self.autostart_var.set(s.autostart_monitoring)
+        self.sound_var.set(s.sound_enabled)
 
     def _read_form(self) -> Settings | None:
         """Validate the form. Shows an error dialog and returns None if something is invalid."""
@@ -119,7 +124,11 @@ class App(tk.Tk):
                 messagebox.showerror(APP_NAME, f"'{self.labels[key]}' must be at least {minimum:g}.")
                 return None
             values[key] = value
-        return Settings(autostart_monitoring=self.autostart_var.get(), **values)
+        return Settings(
+            autostart_monitoring=self.autostart_var.get(),
+            sound_enabled=self.sound_var.get(),
+            **values,
+        )
 
     # ------------------------------------------------------------- actions
 
@@ -143,7 +152,9 @@ class App(tk.Tk):
         self.monitor = Monitor(
             api=self.api,
             load_settings=load_settings,
-            notify=notifier.show_alert,
+            notify=lambda symbol, change, price, window: notifier.show_alert(
+                symbol, change, price, window, sound=load_settings().sound_enabled
+            ),
             log=lambda text: self.messages.put(("log", text)),
             set_status=lambda text: self.messages.put(("status", text)),
         )
@@ -159,9 +170,19 @@ class App(tk.Tk):
 
     def test_notification(self) -> None:
         try:
-            notifier.show_test()
+            notifier.show_test(sound=self.sound_var.get())
         except Exception as exc:
             messagebox.showerror(APP_NAME, f"Could not show notification: {exc}")
+
+    def open_alerts_log(self) -> None:
+        """Open alerts.log (every alert with time, coin, growth and price) in Notepad."""
+        path = alerts_log_path()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch(exist_ok=True)
+            os.startfile(str(path))  # Windows only
+        except (OSError, AttributeError) as exc:
+            messagebox.showerror(APP_NAME, f"Could not open {path}: {exc}")
 
     # ---------------------------------------------------------------- misc
 
